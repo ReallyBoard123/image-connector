@@ -4,49 +4,35 @@ import React, { useState } from 'react';
 import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { ShapeProvider, type ShapeType } from './ShapeProvider';
-import { ChevronDown, ChevronUp, Merge } from 'lucide-react';
-
-export interface TrackletImage {
-  name: string;
-  path: string;
-  shape: ShapeType;
-  color: string;
-}
-
-export interface Tracklet {
-  tracklet_id: string;
-  images: TrackletImage[];
-}
+import { ChevronDown, ChevronUp } from 'lucide-react';
+import { Tracklet, TrackletImage } from '@/lib/types';
 
 interface TrackletManagerProps {
   tracklets: Tracklet[];
   onTrackletUpdate: (updatedTracklets: Tracklet[]) => void;
+  uploadedImages: Map<string, File>;
 }
 
 export const TrackletManager: React.FC<TrackletManagerProps> = ({
   tracklets,
   onTrackletUpdate,
+  uploadedImages
 }) => {
-  // State for selected images
   const [selectedImages, setSelectedImages] = useState<Set<string>>(new Set());
-  // State for collapsed tracklets
   const [collapsedTracklets, setCollapsedTracklets] = useState<Set<string>>(new Set());
 
-  const toggleImageSelection = (imagePath: string, event: React.MouseEvent) => {
+  const toggleImageSelection = (imageName: string, event: React.MouseEvent) => {
     const newSelection = new Set(selectedImages);
     if (event.ctrlKey || event.metaKey) {
-      // Toggle single selection with Ctrl/Cmd
-      if (newSelection.has(imagePath)) {
-        newSelection.delete(imagePath);
+      if (newSelection.has(imageName)) {
+        newSelection.delete(imageName);
       } else {
-        newSelection.add(imagePath);
+        newSelection.add(imageName);
       }
     } else if (event.shiftKey && selectedImages.size > 0) {
-      // Range selection with Shift
       const lastSelected = Array.from(selectedImages)[selectedImages.size - 1];
       const [trackletId, startIndex] = findImagePosition(lastSelected);
-      const [currentTrackletId, currentIndex] = findImagePosition(imagePath);
+      const [currentTrackletId, currentIndex] = findImagePosition(imageName);
       
       if (trackletId === currentTrackletId) {
         const tracklet = tracklets.find(t => t.tracklet_id === trackletId);
@@ -54,21 +40,20 @@ export const TrackletManager: React.FC<TrackletManagerProps> = ({
           const start = Math.min(startIndex, currentIndex);
           const end = Math.max(startIndex, currentIndex);
           tracklet.images.slice(start, end + 1).forEach(img => {
-            newSelection.add(img.path);
+            newSelection.add(img.name);
           });
         }
       }
     } else {
-      // Single selection without modifiers
       newSelection.clear();
-      newSelection.add(imagePath);
+      newSelection.add(imageName);
     }
     setSelectedImages(newSelection);
   };
 
-  const findImagePosition = (imagePath: string): [string, number] => {
+  const findImagePosition = (imageName: string): [string, number] => {
     for (const tracklet of tracklets) {
-      const index = tracklet.images.findIndex(img => img.path === imagePath);
+      const index = tracklet.images.findIndex(img => img.name === imageName);
       if (index !== -1) {
         return [tracklet.tracklet_id, index];
       }
@@ -78,25 +63,22 @@ export const TrackletManager: React.FC<TrackletManagerProps> = ({
 
   const handleDragEnd = (result: DropResult) => {
     const { source, destination } = result;
-
     if (!destination) return;
 
     const newTracklets = [...tracklets];
     const sourceTracklet = newTracklets[parseInt(source.droppableId)];
     const destTracklet = newTracklets[parseInt(destination.droppableId)];
 
-    // Handle multiple selected images if the dragged item is part of the selection
     if (selectedImages.has(result.draggableId)) {
-      const selectedPaths = Array.from(selectedImages);
+      const selectedNames = Array.from(selectedImages);
       const movedImages: TrackletImage[] = [];
       
-      // Remove all selected images from their source tracklets
       newTracklets.forEach(tracklet => {
         const imagesToKeep: TrackletImage[] = [];
         const imagesToMove: TrackletImage[] = [];
         
         tracklet.images.forEach(image => {
-          if (selectedPaths.includes(image.path)) {
+          if (selectedNames.includes(image.name)) {
             imagesToMove.push(image);
           } else {
             imagesToKeep.push(image);
@@ -107,10 +89,8 @@ export const TrackletManager: React.FC<TrackletManagerProps> = ({
         movedImages.push(...imagesToMove);
       });
 
-      // Add all selected images to the destination tracklet
       destTracklet.images.splice(destination.index, 0, ...movedImages);
     } else {
-      // Handle single image drag
       const [movedImage] = sourceTracklet.images.splice(source.index, 1);
       destTracklet.images.splice(destination.index, 0, movedImage);
     }
@@ -159,14 +139,14 @@ export const TrackletManager: React.FC<TrackletManagerProps> = ({
 
   return (
     <DragDropContext onDragEnd={handleDragEnd}>
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+      <div className="flex flex-col gap-4">
         {tracklets.map((tracklet, trackletIndex) => (
           <Droppable key={tracklet.tracklet_id} droppableId={trackletIndex.toString()}>
             {(provided, snapshot) => (
               <Card 
                 ref={provided.innerRef}
                 {...provided.droppableProps}
-                className={`h-fit ${snapshot.isDraggingOver ? 'bg-muted/50' : ''}`}
+                className="w-full"
               >
                 <CardHeader className="pb-3">
                   <div className="flex justify-between items-center">
@@ -184,7 +164,7 @@ export const TrackletManager: React.FC<TrackletManagerProps> = ({
                       </Button>
                       <span>Tracklet {tracklet.tracklet_id}</span>
                       <span className="text-sm text-muted-foreground ml-2">
-                        ({tracklet.images.length} shapes)
+                        ({tracklet.images.length} images)
                       </span>
                     </CardTitle>
                     <div className="flex gap-2">
@@ -214,11 +194,11 @@ export const TrackletManager: React.FC<TrackletManagerProps> = ({
                 </CardHeader>
                 {!collapsedTracklets.has(tracklet.tracklet_id) && (
                   <CardContent>
-                    <div className="grid grid-cols-2 gap-2">
+                    <div className="flex flex-wrap gap-2">
                       {tracklet.images.map((image, index) => (
                         <Draggable
-                          key={image.path}
-                          draggableId={image.path}
+                          key={image.name}
+                          draggableId={image.name}
                           index={index}
                         >
                           {(provided, snapshot) => (
@@ -226,19 +206,22 @@ export const TrackletManager: React.FC<TrackletManagerProps> = ({
                               ref={provided.innerRef}
                               {...provided.draggableProps}
                               {...provided.dragHandleProps}
-                              onClick={(e) => toggleImageSelection(image.path, e)}
+                              onClick={(e) => toggleImageSelection(image.name, e)}
                               className={`relative group cursor-pointer ${
                                 snapshot.isDragging ? 'opacity-50' : ''
                               } ${
-                                selectedImages.has(image.path) ? 
+                                selectedImages.has(image.name) ? 
                                 'ring-2 ring-primary' : ''
                               }`}
                             >
-                              <div className="w-full aspect-square bg-muted rounded-md overflow-hidden p-4 transition-colors hover:bg-muted/80">
-                                <ShapeProvider 
-                                  type={image.shape} 
-                                  color={image.color}
-                                />
+                              <div className="w-24 h-24 bg-muted rounded-md overflow-hidden transition-colors hover:bg-muted/80">
+                                {uploadedImages.has(image.name) && (
+                                  <img 
+                                    src={URL.createObjectURL(uploadedImages.get(image.name)!)}
+                                    alt={image.name}
+                                    className="w-full h-full object-contain"
+                                  />
+                                )}
                               </div>
                               <div className="absolute bottom-0 left-0 right-0 bg-black bg-opacity-50 text-white text-xs p-1 hidden group-hover:block rounded-b-md">
                                 {image.name}

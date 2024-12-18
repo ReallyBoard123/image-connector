@@ -4,19 +4,8 @@ import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Plus } from 'lucide-react';
-import { ShapeType } from './ShapeProvider';
+import { Tracklet } from '@/lib/types';
 
-export interface TrackletImage {
-  name: string;
-  path: string;
-  shape: ShapeType;
-  color: string;
-}
-
-export interface Tracklet {
-  tracklet_id: string;
-  images: TrackletImage[];
-}
 
 interface NewTrackletCreatorProps {
   existingTracklets: Tracklet[];
@@ -30,15 +19,11 @@ export const NewTrackletCreator: React.FC<NewTrackletCreatorProps> = ({
   className = ''
 }) => {
   const generateUniqueTrackletId = (): string => {
-    // Get all existing IDs
     const existingIds = existingTracklets.map(t => 
       parseInt(t.tracklet_id)
     ).filter(id => !isNaN(id));
-
-    // If no existing IDs, start with 0
+    
     if (existingIds.length === 0) return "0";
-
-    // Find the maximum ID and add 1
     const maxId = Math.max(...existingIds);
     return (maxId + 1).toString();
   };
@@ -67,14 +52,6 @@ export const NewTrackletCreator: React.FC<NewTrackletCreatorProps> = ({
       </CardContent>
     </Card>
   );
-};
-
-// Utility function to check if a tracklet ID already exists
-export const isTrackletIdUnique = (
-  id: string, 
-  existingTracklets: Tracklet[]
-): boolean => {
-  return !existingTracklets.some(tracklet => tracklet.tracklet_id === id);
 };
 
 export default NewTrackletCreator;

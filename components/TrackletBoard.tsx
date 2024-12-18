@@ -2,29 +2,28 @@
 
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import JSONUploader from './JSONUploader';
 import TrackletManager from './TrackletManager';
 import NewTrackletCreator from './NewTrackletCreator';
 import TrackletExporter from './TrackletExporter';
-import { ShapeType } from './ShapeProvider';
+import { Tracklet } from '@/lib/types';
+import ImageUploader from './ImageUploader';
+import JSONUploader from './JSONUploader';
 
-export interface TrackletImage {
-  name: string;
-  path: string;
-  shape: ShapeType;
-  color: string;
-}
-
-export interface Tracklet {
-  tracklet_id: string;
-  images: TrackletImage[];
-}
 
 const TrackletBoard: React.FC = () => {
   const [tracklets, setTracklets] = useState<Tracklet[]>([]);
+  const [uploadedImages, setUploadedImages] = useState<Map<string, File>>(new Map());
 
   const handleFileUpload = (loadedTracklets: Tracklet[]) => {
     setTracklets(loadedTracklets);
+  };
+
+  const handleImagesUpload = (files: File[]) => {
+    const newImages = new Map(uploadedImages);
+    files.forEach(file => {
+      newImages.set(file.name, file);
+    });
+    setUploadedImages(newImages);
   };
 
   const handleTrackletUpdate = (updatedTracklets: Tracklet[]) => {
@@ -40,16 +39,16 @@ const TrackletBoard: React.FC = () => {
       <Card className="mb-6">
         <CardHeader>
           <div className="flex justify-between items-center">
-            <CardTitle>Shape Tracklet Management</CardTitle>
+            <CardTitle>Tracklet Management</CardTitle>
             <TrackletExporter tracklets={tracklets} />
           </div>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-6">
           <JSONUploader onFileUpload={handleFileUpload} />
+          <ImageUploader onImagesUpload={handleImagesUpload} />
         </CardContent>
       </Card>
 
-      {/* New Tracklet Creator */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
         <NewTrackletCreator
           existingTracklets={tracklets}
@@ -57,15 +56,15 @@ const TrackletBoard: React.FC = () => {
         />
       </div>
 
-      {/* Tracklet Manager */}
       <div className="mt-6">
         <TrackletManager
           tracklets={tracklets}
           onTrackletUpdate={handleTrackletUpdate}
+          uploadedImages={uploadedImages}
         />
       </div>
     </div>
   );
 };
 
-export default TrackletBoard;
+export default TrackletBoard

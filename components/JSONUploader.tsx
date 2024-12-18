@@ -3,19 +3,7 @@
 import React, { useState } from 'react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { ShapeType } from './ShapeProvider';
-
-export interface TrackletImage {
-  name: string;
-  path: string;
-  shape: ShapeType;
-  color: string;
-}
-
-export interface Tracklet {
-  tracklet_id: string;
-  images: TrackletImage[];
-}
+import { Tracklet } from '@/lib/types';
 
 interface JSONUploaderProps {
   onFileUpload: (tracklets: Tracklet[]) => void;
@@ -65,4 +53,4 @@ const JSONUploader: React.FC<JSONUploaderProps> = ({ onFileUpload }) => {
   );
 };
 
-export default JSONUploader;
+export default JSONUploader

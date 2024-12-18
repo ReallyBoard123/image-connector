@@ -3,19 +3,7 @@
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Download } from 'lucide-react';
-import { ShapeType } from './ShapeProvider';
-
-export interface TrackletImage {
-  name: string;
-  path: string;
-  shape: ShapeType;
-  color: string;
-}
-
-export interface Tracklet {
-  tracklet_id: string;
-  images: TrackletImage[];
-}
+import { Tracklet } from '@/lib/types';
 
 interface TrackletExporterProps {
   tracklets: Tracklet[];
@@ -31,7 +19,6 @@ export const TrackletExporter: React.FC<TrackletExporterProps> = ({
   size = 'sm'
 }) => {
   const formatTrackletForExport = (tracklet: Tracklet): Tracklet => {
-    // Sort images by name
     const sortedImages = [...tracklet.images].sort((a, b) => 
       a.name.localeCompare(b.name)
     );
@@ -39,29 +26,21 @@ export const TrackletExporter: React.FC<TrackletExporterProps> = ({
     return {
       tracklet_id: tracklet.tracklet_id,
       images: sortedImages.map(img => ({
-        name: img.name,
-        path: img.path,
-        shape: img.shape,
-        color: img.color
+        name: img.name
       }))
     };
   };
 
   const handleExport = () => {
-    // Sort tracklets by ID
     const sortedTracklets = [...tracklets]
       .sort((a, b) => Number(a.tracklet_id) - Number(b.tracklet_id))
       .map(formatTrackletForExport);
 
-    // Create the final export structure
     const exportData = {
       tracklets: sortedTracklets
     };
 
-    // Convert to JSON string with proper formatting
     const jsonString = JSON.stringify(exportData, null, 2);
-    
-    // Create and trigger download
     const blob = new Blob([jsonString], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
