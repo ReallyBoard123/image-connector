@@ -8,30 +8,29 @@ import TrackletExporter from './TrackletExporter';
 import { Tracklet } from '@/lib/types';
 import ImageUploader from './ImageUploader';
 import JSONUploader from './JSONUploader';
-
+import { LogDrawer } from './LogDrawer';
+import { useTrackletStore } from '@/stores/useTrackletStore';
 
 const TrackletBoard: React.FC = () => {
-  const [tracklets, setTracklets] = useState<Tracklet[]>([]);
   const [uploadedImages, setUploadedImages] = useState<Map<string, File>>(new Map());
+  const { setTracklets, createTracklet } = useTrackletStore();
 
   const handleFileUpload = (loadedTracklets: Tracklet[]) => {
     setTracklets(loadedTracklets);
   };
 
   const handleImagesUpload = (files: File[]) => {
-    const newImages = new Map(uploadedImages);
-    files.forEach(file => {
-      newImages.set(file.name, file);
+    setUploadedImages(prev => {
+      const newImages = new Map(prev);
+      files.forEach(file => {
+        newImages.set(file.name, file);
+      });
+      return newImages;
     });
-    setUploadedImages(newImages);
-  };
-
-  const handleTrackletUpdate = (updatedTracklets: Tracklet[]) => {
-    setTracklets(updatedTracklets);
   };
 
   const handleNewTracklet = (newTracklet: Tracklet) => {
-    setTracklets([...tracklets, newTracklet]);
+    createTracklet(newTracklet);
   };
 
   return (
@@ -40,7 +39,10 @@ const TrackletBoard: React.FC = () => {
         <CardHeader>
           <div className="flex justify-between items-center">
             <CardTitle>Tracklet Management</CardTitle>
-            <TrackletExporter tracklets={tracklets} />
+            <div className="flex gap-2">
+              <LogDrawer />
+              <TrackletExporter />
+            </div>
           </div>
         </CardHeader>
         <CardContent className="space-y-6">
@@ -51,20 +53,16 @@ const TrackletBoard: React.FC = () => {
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
         <NewTrackletCreator
-          existingTracklets={tracklets}
+          existingTracklets={useTrackletStore().tracklets}
           onNewTracklet={handleNewTracklet}
         />
       </div>
 
       <div className="mt-6">
-        <TrackletManager
-          tracklets={tracklets}
-          onTrackletUpdate={handleTrackletUpdate}
-          uploadedImages={uploadedImages}
-        />
+        <TrackletManager uploadedImages={uploadedImages} />
       </div>
     </div>
   );
 };
 
-export default TrackletBoard
+export default TrackletBoard;

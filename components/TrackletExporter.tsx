@@ -4,30 +4,36 @@ import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Download } from 'lucide-react';
 import { Tracklet } from '@/lib/types';
+import { useTrackletStore } from '@/stores/useTrackletStore';
 
 interface TrackletExporterProps {
-  tracklets: Tracklet[];
   className?: string;
   variant?: 'default' | 'outline' | 'ghost';
   size?: 'default' | 'sm' | 'lg';
 }
 
 export const TrackletExporter: React.FC<TrackletExporterProps> = ({ 
-  tracklets,
   className = '',
   variant = 'outline',
   size = 'sm'
 }) => {
+  const { tracklets, imageOriginsMap } = useTrackletStore();
+
   const formatTrackletForExport = (tracklet: Tracklet): Tracklet => {
     const sortedImages = [...tracklet.images].sort((a, b) => 
       a.name.localeCompare(b.name)
-    );
+    ).map(img => {
+      const origin = imageOriginsMap.get(img.name);
+      return {
+        name: origin ? 
+          `${tracklet.tracklet_id}_${origin.originalTrackletId}_${origin.imageName}` : 
+          img.name
+      };
+    });
 
     return {
       tracklet_id: tracklet.tracklet_id,
-      images: sortedImages.map(img => ({
-        name: img.name
-      }))
+      images: sortedImages
     };
   };
 

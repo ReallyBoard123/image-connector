@@ -1,30 +1,47 @@
-'use client';
+"use client"
 
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
 import { ChevronDown, ChevronUp } from 'lucide-react';
-import { Tracklet, TrackletImage } from '@/lib/types';
 import ImageZoomPreview, { useZoomToggle } from './ImageZoomPreview';
-
+import { useTrackletStore } from '@/stores/useTrackletStore';
 
 interface TrackletManagerProps {
-  tracklets: Tracklet[];
-  onTrackletUpdate: (updatedTracklets: Tracklet[]) => void;
   uploadedImages: Map<string, File>;
 }
 
 export const TrackletManager: React.FC<TrackletManagerProps> = ({
-  tracklets,
-  onTrackletUpdate,
   uploadedImages
 }) => {
+  const { tracklets, moveImages, mergeTracklets } = useTrackletStore();
   const [selectedImages, setSelectedImages] = useState<Set<string>>(new Set());
   const [collapsedTracklets, setCollapsedTracklets] = useState<Set<string>>(new Set());
   const [hoveredImage, setHoveredImage] = useState<string | null>(null);
   const [hoverPosition, setHoverPosition] = useState({ x: 0, y: 0 });
+  const [shouldScroll, setShouldScroll] = useState<Record<string, boolean>>({});
   const isZoomEnabled = useZoomToggle();
+  const contentRefs = useRef<Record<string, HTMLDivElement | null>>({});
+
+  const checkScrollNeeded = (trackletId: string) => {
+    const contentElement = contentRefs.current[trackletId];
+    if (contentElement) {
+      const itemHeight = 96 + 8;
+      const rows = Math.ceil(contentElement.scrollHeight / itemHeight);
+      setShouldScroll(prev => ({
+        ...prev,
+        [trackletId]: rows > 3
+      }));
+    }
+  };
+
+  useEffect(() => {
+    Object.keys(contentRefs.current).forEach(trackletId => {
+      checkScrollNeeded(trackletId);
+    });
+  }, [tracklets]);
 
   const handleMouseMove = (event: React.MouseEvent) => {
     setHoverPosition({
@@ -39,6 +56,16 @@ export const TrackletManager: React.FC<TrackletManagerProps> = ({
 
   const handleMouseLeave = () => {
     setHoveredImage(null);
+  };
+
+  const findImagePosition = (imageName: string): [string, number] => {
+    for (const tracklet of tracklets) {
+      const index = tracklet.images.findIndex(img => img.name === imageName);
+      if (index !== -1) {
+        return [tracklet.tracklet_id, index];
+      }
+    }
+    return ['', -1];
   };
 
   const toggleImageSelection = (imageName: string, event: React.MouseEvent) => {
@@ -71,77 +98,47 @@ export const TrackletManager: React.FC<TrackletManagerProps> = ({
     setSelectedImages(newSelection);
   };
 
-  const findImagePosition = (imageName: string): [string, number] => {
-    for (const tracklet of tracklets) {
-      const index = tracklet.images.findIndex(img => img.name === imageName);
-      if (index !== -1) {
-        return [tracklet.tracklet_id, index];
-      }
-    }
-    return ['', -1];
-  };
-
   const handleDragEnd = (result: DropResult) => {
     const { source, destination } = result;
     if (!destination) return;
 
-    const newTracklets = [...tracklets];
-    const sourceTracklet = newTracklets[parseInt(source.droppableId)];
-    const destTracklet = newTracklets[parseInt(destination.droppableId)];
+    const sourceTracklet = tracklets[parseInt(source.droppableId)];
+    const destTracklet = tracklets[parseInt(destination.droppableId)];
 
     if (selectedImages.has(result.draggableId)) {
       const selectedNames = Array.from(selectedImages);
-      const movedImages: TrackletImage[] = [];
-      
-      newTracklets.forEach(tracklet => {
-        const imagesToKeep: TrackletImage[] = [];
-        const imagesToMove: TrackletImage[] = [];
-        
-        tracklet.images.forEach(image => {
-          if (selectedNames.includes(image.name)) {
-            imagesToMove.push(image);
-          } else {
-            imagesToKeep.push(image);
-          }
-        });
-        
-        tracklet.images = imagesToKeep;
-        movedImages.push(...imagesToMove);
+      moveImages({
+        sourceTrackletId: sourceTracklet.tracklet_id,
+        destinationTrackletId: destTracklet.tracklet_id,
+        imageNames: selectedNames,
+        destinationIndex: destination.index
       });
-
-      destTracklet.images.splice(destination.index, 0, ...movedImages);
     } else {
-      const [movedImage] = sourceTracklet.images.splice(source.index, 1);
-      destTracklet.images.splice(destination.index, 0, movedImage);
+      moveImages({
+        sourceTrackletId: sourceTracklet.tracklet_id,
+        destinationTrackletId: destTracklet.tracklet_id,
+        imageNames: [result.draggableId],
+        destinationIndex: destination.index
+      });
     }
-
-    onTrackletUpdate(newTracklets);
+    
     setSelectedImages(new Set());
   };
 
-  const toggleTrackletCollapse = (trackletId: string) => {
-    const newCollapsed = new Set(collapsedTracklets);
-    if (newCollapsed.has(trackletId)) {
-      newCollapsed.delete(trackletId);
-    } else {
-      newCollapsed.add(trackletId);
-    }
-    setCollapsedTracklets(newCollapsed);
+  const handleMergeTracklet = (sourceTrackletId: string, targetTrackletId: string) => {
+    mergeTracklets(sourceTrackletId, targetTrackletId);
   };
 
-  const handleMergeTracklet = (sourceTrackletId: string, targetTrackletId: string) => {
-    const newTracklets = tracklets.map(tracklet => {
-      if (tracklet.tracklet_id === targetTrackletId) {
-        const sourceTracklet = tracklets.find(t => t.tracklet_id === sourceTrackletId);
-        return {
-          ...tracklet,
-          images: [...tracklet.images, ...(sourceTracklet?.images || [])]
-        };
+  const toggleTrackletCollapse = (trackletId: string) => {
+    setCollapsedTracklets(prev => {
+      const newCollapsed = new Set(prev);
+      if (newCollapsed.has(trackletId)) {
+        newCollapsed.delete(trackletId);
+      } else {
+        newCollapsed.add(trackletId);
       }
-      return tracklet;
-    }).filter(tracklet => tracklet.tracklet_id !== sourceTrackletId);
-
-    onTrackletUpdate(newTracklets);
+      return newCollapsed;
+    });
   };
 
   if (tracklets.length === 0) {
@@ -157,12 +154,61 @@ export const TrackletManager: React.FC<TrackletManagerProps> = ({
     );
   }
 
+  const renderImages = (tracklet: typeof tracklets[0], provided: any) => (
+    <div 
+      ref={el => {
+        contentRefs.current[tracklet.tracklet_id] = el;
+      }}
+      className="flex flex-wrap gap-2 p-6"
+    >
+      {tracklet.images.map((image, index) => (
+        <Draggable
+          key={image.name}
+          draggableId={image.name}
+          index={index}
+        >
+          {(provided, snapshot) => (
+            <div
+              ref={provided.innerRef}
+              {...provided.draggableProps}
+              {...provided.dragHandleProps}
+              onClick={(e) => toggleImageSelection(image.name, e)}
+              onMouseEnter={() => handleMouseEnter(image.name)}
+              onMouseLeave={handleMouseLeave}
+              onMouseMove={handleMouseMove}
+              className={`relative group cursor-pointer ${
+                snapshot.isDragging ? 'opacity-50' : ''
+              } ${
+                selectedImages.has(image.name) ? 
+                'ring-2 ring-primary' : ''
+              }`}
+            >
+              <div className="w-24 h-24 bg-muted rounded-md overflow-hidden transition-colors hover:bg-muted/80">
+                {uploadedImages.has(image.name) && (
+                  <img 
+                    src={URL.createObjectURL(uploadedImages.get(image.name)!)}
+                    alt={image.name}
+                    className="w-full h-full object-contain"
+                  />
+                )}
+              </div>
+              <div className="absolute bottom-0 left-0 right-0 bg-black bg-opacity-50 text-white text-xs p-1 hidden group-hover:block rounded-b-md">
+                {image.name}
+              </div>
+            </div>
+          )}
+        </Draggable>
+      ))}
+      {provided.placeholder}
+    </div>
+  );
+
   return (
     <>
       <DragDropContext onDragEnd={handleDragEnd}>
         <div className="flex flex-col gap-4">
           {tracklets.map((tracklet, trackletIndex) => (
-            <Droppable key={tracklet.tracklet_id} droppableId={trackletIndex.toString()}>
+            <Droppable key={tracklet.tracklet_id} droppableId={String(trackletIndex)}>
               {(provided, snapshot) => (
                 <Card 
                   ref={provided.innerRef}
@@ -214,48 +260,14 @@ export const TrackletManager: React.FC<TrackletManagerProps> = ({
                     </div>
                   </CardHeader>
                   {!collapsedTracklets.has(tracklet.tracklet_id) && (
-                    <CardContent>
-                      <div className="flex flex-wrap gap-2">
-                        {tracklet.images.map((image, index) => (
-                          <Draggable
-                            key={image.name}
-                            draggableId={image.name}
-                            index={index}
-                          >
-                            {(provided, snapshot) => (
-                              <div
-                                ref={provided.innerRef}
-                                {...provided.draggableProps}
-                                {...provided.dragHandleProps}
-                                onClick={(e) => toggleImageSelection(image.name, e)}
-                                onMouseEnter={() => handleMouseEnter(image.name)}
-                                onMouseLeave={handleMouseLeave}
-                                onMouseMove={handleMouseMove}
-                                className={`relative group cursor-pointer ${
-                                  snapshot.isDragging ? 'opacity-50' : ''
-                                } ${
-                                  selectedImages.has(image.name) ? 
-                                  'ring-2 ring-primary' : ''
-                                }`}
-                              >
-                                <div className="w-24 h-24 bg-muted rounded-md overflow-hidden transition-colors hover:bg-muted/80">
-                                  {uploadedImages.has(image.name) && (
-                                    <img 
-                                      src={URL.createObjectURL(uploadedImages.get(image.name)!)}
-                                      alt={image.name}
-                                      className="w-full h-full object-contain"
-                                    />
-                                  )}
-                                </div>
-                                <div className="absolute bottom-0 left-0 right-0 bg-black bg-opacity-50 text-white text-xs p-1 hidden group-hover:block rounded-b-md">
-                                  {image.name}
-                                </div>
-                              </div>
-                            )}
-                          </Draggable>
-                        ))}
-                        {provided.placeholder}
-                      </div>
+                    <CardContent className="p-0">
+                      {shouldScroll[tracklet.tracklet_id] ? (
+                        <ScrollArea className="h-[330px]">
+                          {renderImages(tracklet, provided)}
+                        </ScrollArea>
+                      ) : (
+                        renderImages(tracklet, provided)
+                      )}
                     </CardContent>
                   )}
                 </Card>
