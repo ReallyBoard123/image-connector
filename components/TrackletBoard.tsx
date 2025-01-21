@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import TrackletManager from './TrackletManager';
+import ProgressiveTrackletManager from './ProgressiveTrackletManager';
 import NewTrackletCreator from './NewTrackletCreator';
 import TrackletExporter from './TrackletExporter';
 import { Tracklet } from '@/lib/types';
@@ -59,7 +59,7 @@ const TrackletBoard: React.FC = () => {
       </div>
 
       <div className="mt-6">
-        <TrackletManager uploadedImages={uploadedImages} />
+        <ProgressiveTrackletManager uploadedImages={uploadedImages} />
       </div>
     </div>
   );
