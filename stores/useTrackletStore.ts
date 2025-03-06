@@ -140,11 +140,15 @@ export const useTrackletStore = create<TrackletState>((set, get) => ({
   createTracklet: (newTracklet) => {
     const state = get();
     const previousState = JSON.parse(JSON.stringify(state.tracklets));
-    const newTracklets = [...state.tracklets, newTracklet];
+    // Add the new tracklet at the beginning of the array
+    const newTracklets = [newTracklet, ...state.tracklets];
 
+    const aliasDisplay = newTracklet.tracklet_alias ? 
+      ` (${newTracklet.tracklet_alias})` : '';
+      
     const change: Omit<TrackletChange, 'id' | 'timestamp'> = {
       type: 'CREATE',
-      description: `Created new tracklet ${newTracklet.tracklet_id}`,
+      description: `Created new tracklet ${newTracklet.tracklet_id}${aliasDisplay}`,
       movedImages: [],
       previousState,
       currentState: newTracklets

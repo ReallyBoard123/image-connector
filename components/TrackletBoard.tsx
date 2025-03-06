@@ -9,6 +9,7 @@ import { Tracklet } from '@/lib/types';
 import ImageUploader from './ImageUploader';
 import JSONUploader from './JSONUploader';
 import { LogDrawer } from './LogDrawer';
+import HelpDialog from './HelpDialog';
 import { useTrackletStore } from '@/stores/useTrackletStore';
 import UploadStatisticsDialog from './UploadStatisticsDialog';
 import { useUploadStatistics } from '@/hooks/useUploadStatistics';
@@ -16,7 +17,7 @@ import { Badge } from '@/components/ui/badge';
 
 const TrackletBoard: React.FC = () => {
   const [uploadedImages, setUploadedImages] = useState<Map<string, File>>(new Map());
-  const { tracklets, setTracklets, createTracklet } = useTrackletStore();
+  const { tracklets, setTracklets } = useTrackletStore();
 
   const handleFileUpload = (loadedTracklets: Tracklet[]) => {
     setTracklets(loadedTracklets);
@@ -40,9 +41,7 @@ const TrackletBoard: React.FC = () => {
     setUploadedImages(new Map());
   };
 
-  const handleNewTracklet = (newTracklet: Tracklet) => {
-    createTracklet(newTracklet);
-  };
+
 
   const {
     trackletCount,
@@ -78,7 +77,8 @@ const TrackletBoard: React.FC = () => {
                 </div>
               )}
             </div>
-            <div className="flex gap-2">
+            <div className="flex gap-2 items-center">
+              <HelpDialog />
               <LogDrawer />
               <TrackletExporter />
             </div>
@@ -91,10 +91,7 @@ const TrackletBoard: React.FC = () => {
       </Card>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-        <NewTrackletCreator
-          existingTracklets={tracklets}
-          onNewTracklet={handleNewTracklet}
-        />
+        <NewTrackletCreator />
       </div>
 
       <div className="mt-6">
