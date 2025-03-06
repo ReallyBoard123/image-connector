@@ -7,6 +7,8 @@ import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useTrackletMerger, TrackletMergeOverlay } from './TrackletMerger';
 import { useToast } from '@/hooks/use-toast';
+import EditableTrackletName from './EditableTrackletName';
+import { useEditMode } from '@/hooks/useEditMode';
 
 interface ProgressiveTrackletManagerProps {
   uploadedImages: Map<string, File>;
@@ -27,6 +29,7 @@ const ProgressiveTrackletManager: React.FC<ProgressiveTrackletManagerProps> = ({
   const [hoverPosition, setHoverPosition] = useState({ x: 0, y: 0 });
   const [urlCache, setUrlCache] = useState<Map<string, { url: string, lastAccessed: number }>>(new Map());
   const isZoomEnabled = useZoomToggle();
+  const { isEditModeEnabled } = useEditMode();
 
   const totalPages = Math.ceil(tracklets.length / trackletsPerPage);
   const startIndex = (currentPage - 1) * trackletsPerPage;
@@ -144,19 +147,24 @@ const ProgressiveTrackletManager: React.FC<ProgressiveTrackletManagerProps> = ({
       <TrackletMergeOverlay
         key={tracklet.tracklet_id}
         isSelected={isTrackletSelected(tracklet.tracklet_id)}
-        onClick={(e) => toggleTrackletSelection(tracklet.tracklet_id, e)}
+        onClick={(e) => !isEditModeEnabled && toggleTrackletSelection(tracklet.tracklet_id, e)}
       >
         <div className="border rounded-lg p-2 bg-background">
           <div className="mb-2">
             <div className="flex items-center gap-1">
-              <span className="text-sm font-medium">Tracklet {tracklet.tracklet_id}</span>
-              <span className="text-xs text-muted-foreground">
+              <span className="text-sm font-medium">Tracklet </span>
+              <EditableTrackletName 
+                trackletId={tracklet.tracklet_id}
+                alias={tracklet.tracklet_alias}
+                className="text-sm font-medium"
+              />
+              <span className="text-xs text-muted-foreground ml-1">
                 ({startIndex + 1}-{Math.min(startIndex + IMAGES_PER_VIEW, tracklet.images.length)}/{tracklet.images.length})
               </span>
             </div>
           </div>
           <div className="relative group">
-            <div className="flex items-center justify-center gap-1">
+            <div className={`flex items-center justify-center gap-1 ${isEditModeEnabled ? 'pointer-events-none' : ''}`}>
               {visibleImages.map((image: TrackletImage) => {
                 const imageUrl = getImageUrl(image.name);
                 return (

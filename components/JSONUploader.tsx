@@ -20,7 +20,14 @@ const JSONUploader: React.FC<JSONUploaderProps> = ({ onFileUpload }) => {
         try {
           const jsonData = JSON.parse(e.target?.result as string);
           const trackletsData = jsonData.tracklets || jsonData;
-          onFileUpload(trackletsData);
+          
+          // Ensure tracklet_alias is preserved if it exists in the loaded data
+          const processedTracklets = trackletsData.map((tracklet: any) => ({
+            ...tracklet,
+            tracklet_alias: tracklet.tracklet_alias || undefined
+          }));
+          
+          onFileUpload(processedTracklets);
           setFile(uploadedFile);
         } catch (error) {
           console.error('Error parsing JSON:', error);

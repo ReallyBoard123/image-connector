@@ -8,6 +8,8 @@ import { Button } from '@/components/ui/button';
 import { ChevronDown, ChevronUp } from 'lucide-react';
 import ImageZoomPreview, { useZoomToggle } from './ImageZoomPreview';
 import { useTrackletStore } from '@/stores/useTrackletStore';
+import EditableTrackletName from './EditableTrackletName';
+import { useEditMode } from '@/hooks/useEditMode';
 
 interface TrackletManagerProps {
   uploadedImages: Map<string, File>;
@@ -23,6 +25,7 @@ export const TrackletManager: React.FC<TrackletManagerProps> = ({
   const [hoverPosition, setHoverPosition] = useState({ x: 0, y: 0 });
   const [shouldScroll, setShouldScroll] = useState<Record<string, boolean>>({});
   const isZoomEnabled = useZoomToggle();
+  const { isEditModeEnabled } = useEditMode();
   const contentRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
   const checkScrollNeeded = (trackletId: string) => {
@@ -159,7 +162,7 @@ export const TrackletManager: React.FC<TrackletManagerProps> = ({
       ref={el => {
         contentRefs.current[tracklet.tracklet_id] = el;
       }}
-      className="flex flex-wrap gap-2 p-6"
+      className={`flex flex-wrap gap-2 p-6 ${isEditModeEnabled ? 'pointer-events-none' : ''}`}
     >
       {tracklet.images.map((image, index) => (
         <Draggable
@@ -229,7 +232,11 @@ export const TrackletManager: React.FC<TrackletManagerProps> = ({
                             <ChevronUp className="h-4 w-4" />
                           }
                         </Button>
-                        <span>Tracklet {tracklet.tracklet_id}</span>
+                        <span>Tracklet </span>
+                        <EditableTrackletName 
+                          trackletId={tracklet.tracklet_id}
+                          alias={tracklet.tracklet_alias}
+                        />
                         <span className="text-sm text-muted-foreground ml-2">
                           ({tracklet.images.length} images)
                         </span>
@@ -250,7 +257,7 @@ export const TrackletManager: React.FC<TrackletManagerProps> = ({
                               .filter(t => t.tracklet_id !== tracklet.tracklet_id)
                               .map(t => (
                                 <option key={t.tracklet_id} value={t.tracklet_id}>
-                                  Tracklet {t.tracklet_id}
+                                  Tracklet {t.tracklet_alias || t.tracklet_id}
                                 </option>
                               ))
                             }

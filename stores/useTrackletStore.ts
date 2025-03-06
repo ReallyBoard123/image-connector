@@ -9,7 +9,7 @@ interface ImageMapping {
 export interface TrackletChange {
   id: string;
   timestamp: number;
-  type: 'MOVE' | 'MERGE' | 'CREATE' | 'INITIAL_LOAD';
+  type: 'MOVE' | 'MERGE' | 'CREATE' | 'INITIAL_LOAD' | 'UPDATE_ALIAS';
   description: string;
   sourceTrackletId?: string;
   destinationTrackletId?: string;
@@ -32,6 +32,7 @@ interface TrackletState {
   }) => void;
   mergeTracklets: (sourceTrackletId: string, destinationTrackletId: string) => void;
   createTracklet: (newTracklet: Tracklet) => void;
+  setTrackletAlias: (trackletId: string, alias: string) => void;
   addChange: (change: Omit<TrackletChange, 'id' | 'timestamp'>) => void;
   undoChange: (changeId: string) => void;
   clearChanges: () => void;
@@ -144,6 +145,29 @@ export const useTrackletStore = create<TrackletState>((set, get) => ({
     const change: Omit<TrackletChange, 'id' | 'timestamp'> = {
       type: 'CREATE',
       description: `Created new tracklet ${newTracklet.tracklet_id}`,
+      movedImages: [],
+      previousState,
+      currentState: newTracklets
+    };
+
+    state.addChange(change);
+    set({ tracklets: newTracklets });
+  },
+
+  setTrackletAlias: (trackletId, alias) => {
+    const state = get();
+    const previousState = JSON.parse(JSON.stringify(state.tracklets));
+    const newTracklets = state.tracklets.map(tracklet => {
+      if (tracklet.tracklet_id === trackletId) {
+        return { ...tracklet, tracklet_alias: alias };
+      }
+      return tracklet;
+    });
+
+    const change: Omit<TrackletChange, 'id' | 'timestamp'> = {
+      type: 'UPDATE_ALIAS',
+      description: `Updated alias for Tracklet ${trackletId} to "${alias}"`,
+      sourceTrackletId: trackletId,
       movedImages: [],
       previousState,
       currentState: newTracklets

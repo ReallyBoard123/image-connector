@@ -33,6 +33,7 @@ export const TrackletExporter: React.FC<TrackletExporterProps> = ({
 
     return {
       tracklet_id: tracklet.tracklet_id,
+      tracklet_alias: tracklet.tracklet_alias || tracklet.tracklet_id,
       images: sortedImages
     };
   };
